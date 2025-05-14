@@ -1,3 +1,4 @@
+#include "common.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,7 +6,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include "common.h"
+
 
 #define BUFSZ 1024
 
@@ -63,16 +64,52 @@ struct sockaddr_storage storage;
         addrtostr(caddr, caddrstr, BUFSZ);
         printf("[log] connection from %s\n", caddrstr);
 
-        char buf[BUFSZ];
-        memset(buf, 0, BUFSZ);
-        size_t count = recv(csock, buf, BUFSZ - 1, 0);
-        printf("[msg] %s, %d bytes: %s\n", caddrstr, (int)count, buf);
+        GameMessage msg;
+        ssize_t count;
+       memset(&msg, 0, sizeof(msg));
+    msg.type = MSG_REQUEST;
+    snprintf(msg.message, MSG_SIZE,
+        "Escolha sua jogada:\n"
+        "0 - Nuclear Attack\n"
+        "1 - Intercept Attack\n"
+        "2 - Cyber Attack\n"
+        "3 - Drone Strike\n"
+        "4 - Bio Attack\n"
+    );
+    printf("[debug] enviando MSG_REQUEST para %s\n", caddrstr);
+    if (send(csock, &msg, sizeof(msg), 0) != sizeof(msg)) {
+        logexit("send");
+    }
 
-        sprintf(buf, "remote endpoint: %.1000s\n", caddrstr);
-        count = send(csock, buf, strlen(buf) + 1, 0);
-        if (count != strlen(buf) + 1) {
-            logexit("send");
+        // Aguarda a resposta do cliente (MSG_RESPONSE)
+        memset(&msg, 0, sizeof(msg));
+        count = recv(csock, &msg, sizeof(msg), 0);
+        if (count <= 0) {
+            close(csock);
+            continue;
         }
+        if (msg.type != MSG_RESPONSE) {
+            fprintf(stderr, "esperava MSG_RESPONSE, recebeu tipo=%d\n", msg.type);
+            close(csock);
+            continue;
+        }
+        printf("[debug] recv MSG_RESPONSE, client_action=%d\n", msg.client_action);
+
+        // Validar msg.client_action (0–4)  e devolver MSG_RESULT / MSG_ERROR conforme a lógica do jogo.
+        //    Por enquanto só ecoando de volta
+        GameMessage reply;
+        memset(&reply, 0, sizeof(reply));
+        reply.type = MSG_RESULT;
+        // copiar de volta o que veio
+        reply.client_action = msg.client_action;
+        snprintf(reply.message, MSG_SIZE,
+            "Você escolheu %d — Ainda sem lógica implementada.\n",
+            msg.client_action
+        );
+         if (send(csock, &reply, sizeof(reply), 0) != sizeof(reply)) {
+        logexit("send");
+    }
+
         close(csock);
     }
 

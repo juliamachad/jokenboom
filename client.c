@@ -41,29 +41,45 @@ int main(int argc, char *argv[]) {
 
 	printf("connected to %s\n", addrstr);
 
-	char buf[BUFSZ];
-	memset(buf, 0, BUFSZ);
-	printf("mensagem> ");
-	fgets(buf, BUFSZ-1, stdin);
-	size_t count = send(s, buf, strlen(buf)+1, 0);
-	if (count != strlen(buf)+1) {
-		logexit("send");
-	}
+	GameMessage msg;
+    size_t count = recv(s, &msg, sizeof(msg), 0);
+     if (count <= 0) {
+        logexit("recv");
+    }
+    if (msg.type != MSG_REQUEST) {
+        fprintf(stderr, "esperava MSG_REQUEST, recebeu tipo=%d\n", msg.type);
+        exit(EXIT_FAILURE);
+    }
+    
+    printf("%s\n", msg.message);
+	memset(&msg, 0, sizeof(msg));
+    msg.type = MSG_RESPONSE;
+	printf("Escolha sua jogada:\n0 - Nuclear Attack\n1 - Intercept Attack\n...");
+    scanf("%d", &msg.client_action);
+	
+    send(s, &msg, sizeof(msg), 0);
+	
 
-	memset(buf, 0, BUFSZ);
-	unsigned total = 0;
-	while(1) {
-		count = recv(s, buf + total, BUFSZ - total, 0);
-		if (count == 0) {
-			// Connection terminated.
-			break;
-		}
-		total += count;
-	}
+	memset(&msg, 0, sizeof(msg));
+	count = recv(s, &msg, sizeof(msg), 0);
+    if (count <= 0) {
+        logexit("recv");
+    }
+
+	switch (msg.type) {
+        case MSG_RESULT:
+            // o servidor já preencheu msg.message com resultado/parcial
+            printf("Resultado: %s\n", msg.message);
+            break;
+        case MSG_ERROR:
+            fprintf(stderr, "Erro do servidor: %s\n", msg.message);
+            break;
+        default:
+            fprintf(stderr, "Tipo inesperado: %d\n", msg.type);
+    }
 	close(s);
 
-	printf("received %u bytes\n", total);
-	puts(buf);
+	
 
 	exit(EXIT_SUCCESS);
 }
