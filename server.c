@@ -7,75 +7,74 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-
 #define BUFSZ 1024
 
-void usage(int argc, char **argv) {
-    printf("Uso: %s <v4|v6> <porta>\n", argv[0]);
-    printf("exemplo: %s v4 51511\n", argv[0]);
-    exit(EXIT_FAILURE);
+void usage(char **argv) {//CP
+    printf("Uso: %s <v4|v6> <porta>\n", argv[0]);//CP
+    printf("exemplo: %s v4 51511\n", argv[0]);//CP
+    exit(EXIT_FAILURE);//CP
 }
 
 
-int main(int argc, char *argv[]) {
-    if (argc != 3) {
-         usage(argc, argv);
+int main(int argc, char *argv[]) {//CP
+    if (argc != 3) {//CP
+        usage(argv);//CP
     }
-struct sockaddr_storage storage;
-    if (0 != server_sockaddr_init(argv[1], argv[2], &storage)) {
-        usage(argc, argv);
-    }
-
-    int s;
-    s = socket(storage.ss_family, SOCK_STREAM, 0);
-    if (s == -1) {
-        logexit("socket");
+struct sockaddr_storage storage;//CP
+    if (0 != server_sockaddr_init(argv[1], argv[2], &storage)) {//CP
+        usage(argv);//CP
     }
 
-    int enable = 1;
-    if (0 != setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int))) {
-        logexit("setsockopt");
+    int s;//CP
+    s = socket(storage.ss_family, SOCK_STREAM, 0);//CP
+    if (s == -1) {//CP
+        logexit("socket");//CP
     }
 
-    struct sockaddr *addr = (struct sockaddr *)(&storage);
-    if (0 != bind(s, addr, sizeof(storage))) {
-        logexit("bind");
+    int enable = 1;//CP
+    if (0 != setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int))) {//CP
+        logexit("setsockopt");//CP
     }
 
-    if (0 != listen(s, 10)) {
-        logexit("listen");
+    struct sockaddr *addr = (struct sockaddr *)(&storage);//CP
+    if (0 != bind(s, addr, sizeof(storage))) {//CP
+        logexit("bind");//CP
     }
 
-    char addrstr[BUFSZ];
-    addrtostr(addr, addrstr, BUFSZ);
-    printf("bound to %s, waiting connections\n", addrstr);
+    if (0 != listen(s, 10)) {//CP
+        logexit("listen");//CP
+    }
 
-    while (1) {
-        struct sockaddr_storage cstorage;
-        struct sockaddr *caddr = (struct sockaddr *)(&cstorage);
-        socklen_t caddrlen = sizeof(cstorage);
+    char addrstr[BUFSZ];//CP
+    addrtostr(addr, addrstr, BUFSZ);//CP
+    printf("bound to %s, waiting connections\n", addrstr);//CP
 
-        int csock = accept(s, caddr, &caddrlen);
-        if (csock == -1) {
-            logexit("accept");
+    while (1) {//CP
+        struct sockaddr_storage cstorage;//CP
+        struct sockaddr *caddr = (struct sockaddr *)(&cstorage);//CP
+        socklen_t caddrlen = sizeof(cstorage);//CP
+
+        int csock = accept(s, caddr, &caddrlen);//CP
+        if (csock == -1) {//CP
+            logexit("accept");//CP
         }
 
-        char caddrstr[BUFSZ];
-        addrtostr(caddr, caddrstr, BUFSZ);
-        printf("[log] connection from %s\n", caddrstr);
+        char caddrstr[BUFSZ];//CP
+        addrtostr(caddr, caddrstr, BUFSZ);//CP
+        printf("[log] connection from %s\n", caddrstr);//CP
 
+        // Preparar mensagem para solicitar ação do cliente
         GameMessage msg;
-        ssize_t count;
-       memset(&msg, 0, sizeof(msg));
-    msg.type = MSG_REQUEST;
-    snprintf(msg.message, MSG_SIZE,
-        "Escolha sua jogada:\n"
-        "0 - Nuclear Attack\n"
-        "1 - Intercept Attack\n"
-        "2 - Cyber Attack\n"
-        "3 - Drone Strike\n"
-        "4 - Bio Attack\n"
-    );
+        memset(&msg, 0, sizeof(msg));//CP
+        msg.type = MSG_REQUEST;
+        snprintf(msg.message, MSG_SIZE,
+            "Escolha sua jogada:\n"
+            "0 - Nuclear Attack\n"
+            "1 - Intercept Attack\n"
+            "2 - Cyber Attack\n"
+            "3 - Drone Strike\n"
+            "4 - Bio Attack\n"
+        );
     printf("[debug] enviando MSG_REQUEST para %s\n", caddrstr);
     if (send(csock, &msg, sizeof(msg), 0) != sizeof(msg)) {
         logexit("send");
@@ -83,7 +82,7 @@ struct sockaddr_storage storage;
 
         // Aguarda a resposta do cliente (MSG_RESPONSE)
         memset(&msg, 0, sizeof(msg));
-        count = recv(csock, &msg, sizeof(msg), 0);
+        ssize_t count = recv(csock, &msg, sizeof(msg), 0);
         if (count <= 0) {
             close(csock);
             continue;
