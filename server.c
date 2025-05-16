@@ -142,7 +142,8 @@ int main(int argc, char *argv[])
                 {
                     memset(&msg, 0, sizeof(msg));
                     msg.type = MSG_ERROR;
-                    snprintf(msg.message, MSG_SIZE, "Por favor, selecione um valor de 0 a 4.");
+                    printf("Erro: opção inválida de jogada.\n");
+                    snprintf(msg.message, MSG_SIZE, "Por favor, selecione um valor de 0 a 4.\n");
                     send(csock, &msg, sizeof(msg), 0);
                     continue;
                 }
@@ -166,7 +167,8 @@ int main(int argc, char *argv[])
                 }
                 else if (result == -1)
                 {
-                    output_result = "Empate! Vamos reiniciar a rodada.";
+                    output_result = "Empate!";
+                    printf("Jogo empatado.\nSolicitando ao cliente mais uma escolha.");
                 }
 
                 GameMessage result_msg;
@@ -214,12 +216,14 @@ int main(int argc, char *argv[])
             }
             else if (playagain_msg.client_action == 1)
             {
+                printf("Cliente deseja jogar novamente.\n");
                 break;
             }
             else
             {
                 memset(&playagain_msg, 0, sizeof(playagain_msg));
                 playagain_msg.type = MSG_ERROR;
+                printf("Erro: resposta inválida para jogar novamente.\n");
                 snprintf(playagain_msg.message, MSG_SIZE, "Por favor, digite 1 para jogar novamente ou 0 para encerrar.");
                 send(csock, &playagain_msg, sizeof(playagain_msg), 0);
             }
