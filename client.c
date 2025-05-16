@@ -48,9 +48,8 @@ int main(int argc, char *argv[])
     }
 
     // Exibe o endereço ao qual o cliente se conectou
-    char addrstr[BUFSZ];                  // CP
-    addrtostr(addr, addrstr, BUFSZ);      // CP
-    printf("connected to %s\n", addrstr); // CP
+       // CP
+    printf("Conectado ao servidor.\n"); // CP
 
     bool running = true;
 
@@ -64,6 +63,7 @@ int main(int argc, char *argv[])
             logexit("recv");
         }
 
+        int valid_input = 0;
         // Processa a mensagem com base no tipo
         switch (msg.type)
         {
@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
             msg.type = MSG_RESPONSE;
             //scanf("%d", &msg.client_action); // Recebe a ação do usuário //CP
 
-            int valid_input = 0;
+            valid_input = 0;
             while (!valid_input) {
                 int input = scanf("%d", &msg.client_action);
                 
@@ -83,8 +83,7 @@ int main(int argc, char *argv[])
                     // Limpa o buffer de entrada para remover caracteres inválidos
                     int c;
                     while ((c = getchar()) != '\n' && c != EOF); // Descarta caracteres inválidos
-                    
-                    printf("Entrada inválida. Por favor, digite apenas números.\n");
+                    printf("Por favor, selecione um valor de 0 a 4.\n ");
                 }
             }
 
@@ -97,7 +96,19 @@ int main(int argc, char *argv[])
         case MSG_PLAY_AGAIN_REQUEST: // Exibe a solicitação de jogar novamente e lê a resposta do usuário
             printf("%s", msg.message);
             int play_again;
-            scanf("%d", &play_again);
+            valid_input = 0;
+            while (!valid_input) {
+                int input = scanf("%d", &play_again);
+                
+                if (input == 1) {
+                    valid_input = 1; // Entrada válida
+                } else {
+                    // Limpa o buffer de entrada para remover caracteres inválidos
+                    int c;
+                    while ((c = getchar()) != '\n' && c != EOF); // Descarta caracteres inválidos
+                    printf("Por favor, digite 1 para jogar novamente ou 0 para encerrar.\n$ ");
+                }
+            }
             GameMessage play_response;
             memset(&play_response, 0, sizeof(play_response));
             play_response.type = MSG_PLAY_AGAIN_RESPONSE;
@@ -106,10 +117,10 @@ int main(int argc, char *argv[])
             break;
 
         case MSG_RESULT:  // Exibe o resultado da rodada
-            printf("Resultado: %s", msg.message);
+            printf("%s", msg.message);
             break;
         case MSG_ERROR: // Exibe mensagem de erro do servidor
-            fprintf(stderr, "Erro do servidor: %s", msg.message);
+           printf("%s\n", msg.message);
             break;
         case MSG_END: // Exibe mensagem final e encerra o programa
             printf("%s", msg.message);

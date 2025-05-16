@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
 
     char addrstr[BUFSZ];                                   // CP
     addrtostr(addr, addrstr, BUFSZ);                       // CP
-    printf("bound to %s, waiting connections\n", addrstr); // CP
+    printf("Servidor iniciado em modo %s na porta %s. Aguardando conexão..\n", addrstr); // CP
 
      // Nomes das ações para mensagens
         const char *action_names[5] = {
@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
 
         char caddrstr[BUFSZ];                           // CP
         addrtostr(caddr, caddrstr, BUFSZ);              // CP
-        printf("[log] connection from %s\n", caddrstr); // CP
+        printf("Cliente conectado.\n", caddrstr); // CP
 
         int client_wins = 0;
         int server_wins = 0;
@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
                 // Preparar mensagem para solicitar ação do cliente
                 GameMessage msg;
                 memset(&msg, 0, sizeof(msg)); // CP
-                
+                printf("Apresentando as opções para o cliente.\n");
                 snprintf(msg.message, MSG_SIZE,
                          "Escolha sua jogada:\n"
                          "0 - Nuclear Attack\n"
@@ -121,7 +121,6 @@ int main(int argc, char *argv[])
                          "2 - Cyber Attack\n"
                          "3 - Drone Strike\n"
                          "4 - Bio Attack\n");
-                printf("[debug] enviando MSG_REQUEST para %s\n", caddrstr);
                 if (send(csock, &msg, sizeof(msg), 0) != sizeof(msg))
                 {
                     logexit("send");
@@ -143,29 +142,31 @@ int main(int argc, char *argv[])
                 {
                     memset(&msg, 0, sizeof(msg));
                     msg.type = MSG_ERROR;
-                    snprintf(msg.message, MSG_SIZE, "Selecione um valor de 0 a 4.");
+                    snprintf(msg.message, MSG_SIZE, "Por favor, selecione um valor de 0 a 4.");
                     send(csock, &msg, sizeof(msg), 0);
                     continue;
                 }
 
+                printf("Cliente escolheu %d.\n", msg.client_action);
                 // Gera ação do servidor e determina resultado
                 msg.server_action = rand() % 5;
+                printf("Servidor escolheu aleatoriamente %d.\n", msg.server_action);
                 msg = verify_winner(msg);
                 result=msg.result;
                 const char *output_result;
                 if (result == 1)
                 {
                     client_wins++;
-                    output_result = "Você venceu!";
+                    output_result = "Vitória!";
                 }
                 else if (result == 0)
                 {
                     server_wins++;
-                    output_result = "Você perdeu :(";
+                    output_result = "Derrota!";
                 }
                 else if (result == -1)
                 {
-                    output_result = "Deu empate! Vamos reiniciar a rodada.";
+                    output_result = "Empate! Vamos reiniciar a rodada.";
                 }
 
                 GameMessage result_msg;
@@ -180,7 +181,9 @@ int main(int argc, char *argv[])
                 if (send(csock, &result_msg, sizeof(result_msg), 0) != sizeof(result_msg)) {
                     close(csock);
                 }
-                printf("[debug] placar atual: client_wins=%d, server_wins=%d\n", client_wins, server_wins);
+                if (result != -1) {
+                printf("Placar atualizado: Cliente %d x %d Servidor\n", client_wins, server_wins);
+            }
             }
 
              while (1) {
@@ -188,7 +191,7 @@ int main(int argc, char *argv[])
             memset(&playagain_msg, 0, sizeof(playagain_msg));
             playagain_msg.type = MSG_PLAY_AGAIN_REQUEST;
             snprintf(playagain_msg.message, MSG_SIZE, "Deseja jogar novamente?\n1 - Sim\n0 - Não\n");
-            printf("[debug] enviando MSG_PLAY_AGAIN_REQUEST para %s\n", caddrstr);
+            printf("Perguntando se o cliente deseja jogar novamente.\n");
             if (send(csock, &playagain_msg, sizeof(playagain_msg), 0) != sizeof(playagain_msg)) {
                      close(csock);
                 }
@@ -205,6 +208,7 @@ int main(int argc, char *argv[])
                 
             if (playagain_msg.client_action == 0)
             {
+                printf("Cliente não deseja jogar novamente.\n");
                 play_again = false;
                 break;
             }
@@ -216,7 +220,7 @@ int main(int argc, char *argv[])
             {
                 memset(&playagain_msg, 0, sizeof(playagain_msg));
                 playagain_msg.type = MSG_ERROR;
-                snprintf(playagain_msg.message, MSG_SIZE, "Digite 1 para sim ou 0 para não.");
+                snprintf(playagain_msg.message, MSG_SIZE, "Por favor, digite 1 para jogar novamente ou 0 para encerrar.");
                 send(csock, &playagain_msg, sizeof(playagain_msg), 0);
             }
         }
@@ -229,14 +233,16 @@ int main(int argc, char *argv[])
         end_msg.client_wins = client_wins;
         end_msg.server_wins = server_wins;
         snprintf(end_msg.message, MSG_SIZE,
-                 "Fim de jogo!\nPlacar final: Você %d x %d Servidor\n",
+                 "Fim de jogo!\nPlacar final: Você %d x %d Servidor\nObrigado por jogar!\n",
                  client_wins, server_wins);
-        printf("[debug] enviando MSG_END para %s\n", caddrstr);
+        printf("Enviando placar final.\n");
         if (send(csock, &end_msg, sizeof(end_msg), 0) != sizeof(end_msg)) {
             fprintf(stderr, "Erro ao enviar MSG_END\n");
         }
 
-        close(csock);
+        printf("Encerrando conexão.\n");
+    close(csock);
+    printf("Cliente desconectado.\n");
     }
 
     exit(EXIT_SUCCESS);
