@@ -80,7 +80,6 @@ int main(int argc, char *argv[])
             logexit("recv");
         }
 
-        int valid_input = 0; // Flag para validação de entrada (impede entrada de caracteres)
         
         // Processamento da mensagem de acordo com seu tipo
         switch (msg.type)

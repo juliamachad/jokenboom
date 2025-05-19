@@ -19,15 +19,34 @@ void usage(char **argv)
     exit(EXIT_FAILURE);
 }
 
+// Função para validar se a entrada é um inteiro dentro de um intervalo
+// Retorna 0 se entrada válida, -1 se não é inteiro, -2 se está fora do intervalo esperado
+int validate_integer(const char *input, int min, int max, int *output)
+{
+    char *endptr;
+    long value = strtol(input, &endptr, 10);
+
+    if (endptr == input || *endptr != '\0')
+    {
+        return -1;
+    }
+
+    if (value < min || value > max)
+    {
+        *output = (int)value;
+        return -2;
+    }
+
+    *output = (int)value;
+    return 0;
+}
+
 int main(int argc, char *argv[])
 {
     if (argc != 3) // Verifica se foram fornecidos exatamente 3 argumentos (nome do programa, modo, porta)
     {
         usage(argv);
     }
-
-    // Inicializa gerador de números aleatórios
-    srand(time(NULL));
 
     // Inicializa o endereço do servidor com base em IP e porta fornecidos
     struct sockaddr_storage storage;
@@ -58,24 +77,24 @@ int main(int argc, char *argv[])
         logexit("bind");
     }
 
-    // Coloca o socket em modo de escuta para até 10 conexões simultâneas
+    // Coloca o socket em modo de escuta
     if (0 != listen(s, 10))
     {
         logexit("listen");
     }
 
-    // char addrstr[BUFSZ];
-    // addrtostr(addr, addrstr, BUFSZ);
-
     // Exibe configurações do servidor inicializado
     printf("Servidor iniciado em modo IP%s na porta %s. Aguardando conexão..\n", argv[1], argv[2]);
+
+    // Inicializa gerador de números aleatórios
+    srand(time(NULL));
 
     // Ações de jogadas disponíveis
     static const char *action_names[5] =
         {
             "Nuclear Attack", "Intercept Attack", "Cyber Attack", "Drone Strike", "Bio Attack"};
 
-    // Resultados da partida possíveis (matriz: cliente x servidor)
+    // Resultados de partida possíveis (matriz: cliente x servidor)
     // 1 = cliente vence, 0 = servidor vence, -1 = empate
     static const int verify_winner[5][5] =
         {
@@ -97,10 +116,9 @@ int main(int argc, char *argv[])
         {
             logexit("accept");
         }
-        // char caddrstr[BUFSZ];
-        // addrtostr(caddr, caddrstr, BUFSZ);
         printf("Cliente conectado.\n");
 
+        // Inicializa variáveis pra controlar o jogo
         int client_wins = 0;
         int server_wins = 0;
         bool play_again = true;
@@ -112,16 +130,21 @@ int main(int argc, char *argv[])
             {
                 GameMessage msg;
                 memset(&msg, 0, sizeof(msg));
+                msg.type = MSG_REQUEST;
 
                 // Envia opções de jogadas ao cliente
                 printf("Apresentando as opções para o cliente.\n");
-                snprintf(msg.message, MSG_SIZE,
-                         "Escolha sua jogada:\n\n"
-                         "0 - Nuclear Attack\n"
-                         "1 - Intercept Attack\n"
-                         "2 - Cyber Attack\n"
-                         "3 - Drone Strike\n"
-                         "4 - Bio Attack\n\n");
+
+                char options[MSG_SIZE] = "Escolha sua jogada:\n\n";
+                for (int i = 0; i < 5; i++)
+                {
+                    char line[30];
+                    snprintf(line, sizeof(line), "%d - %s\n", i, action_names[i]);
+                    strcat(options, line);
+                }
+                strcat(options, "\n");
+
+                snprintf(msg.message, MSG_SIZE, "%s", options);
                 if (send(csock, &msg, sizeof(msg), 0) != sizeof(msg))
                 {
                     logexit("send");
@@ -143,38 +166,34 @@ int main(int argc, char *argv[])
                 }
 
                 // Verifica se a jogada do cliente é uma opção válida
-                char *endptr;
-                long client_action = strtol(msg.message, &endptr, 10);
+                int client_action;
+                int validation = validate_integer(msg.message, 0, 4, &client_action);
 
-                if (endptr == msg.message || *endptr != '\0')
+                if (validation != -1)
                 {
-                    printf("Cliente nao escolheu um inteiro.\n");
-                    printf("Erro: opção inválida de jogada.\n");
+                    printf("Cliente escolheu %d.\n", client_action);
+                }
+                if (validation != 0)
+                {
                     GameMessage error_msg;
                     memset(&error_msg, 0, sizeof(error_msg));
                     error_msg.type = MSG_ERROR;
-                    snprintf(error_msg.message, MSG_SIZE, "Por favor, selecione um valor de 0 a 4.\n");
+
+                    if (validation == -1)
+                    {
+                        printf("Cliente não escolheu um inteiro.\n");
+                    }
+                    else
+                    {
+                        printf("Erro: opção inválida de jogada.\n");
+                    }
+
+                    snprintf(error_msg.message, MSG_SIZE, "\nPor favor, selecione um valor de 0 a 4.\n");
                     send(csock, &error_msg, sizeof(error_msg), 0);
                     continue;
                 }
-                else
-                {
-                    msg.client_action = (int)client_action;
-                    printf("Cliente escolheu %d.\n", msg.client_action);
 
-                    if (client_action < 0 || client_action > 4)
-                    {
-                        GameMessage error_msg;
-                        memset(&error_msg, 0, sizeof(error_msg));
-                        error_msg.type = MSG_ERROR;
-                        printf("Erro: opção inválida de jogada.\n");
-                        snprintf(error_msg.message, MSG_SIZE, "Por favor, selecione um valor de 0 a 4.\n");
-                        send(csock, &error_msg, sizeof(error_msg), 0);
-                        continue;
-                    }
-
-                   
-                }
+                msg.client_action = client_action;
 
                 // Gera jogada aleatória do servidor
                 msg.server_action = rand() % 5;
@@ -182,20 +201,19 @@ int main(int argc, char *argv[])
 
                 // Verifica o resultado da partida na matriz
                 msg.result = verify_winner[msg.client_action][msg.server_action];
-                result = msg.result;
-
+                result= msg.result; 
                 const char *output_result;
-                if (result == 1)
+                if (msg.result == 1)
                 {
                     client_wins++;
                     output_result = "Vitória!";
                 }
-                else if (result == 0)
+                else if (msg.result == 0)
                 {
                     server_wins++;
                     output_result = "Derrota!";
                 }
-                else if (result == -1)
+                else if (msg.result == -1)
                 {
                     output_result = "Empate!";
                     printf("Jogo empatado.\nSolicitando ao cliente mais uma escolha.\n");
@@ -207,7 +225,7 @@ int main(int argc, char *argv[])
                 result_msg.type = MSG_RESULT;
                 result_msg.client_action = msg.client_action;
                 result_msg.server_action = msg.server_action;
-                result_msg.result = result;
+                result_msg.result = msg.result;
                 snprintf(result_msg.message, MSG_SIZE,
                          "\nVocê escolheu: %s\nServidor escolheu: %s\nResultado: %s\n",
                          action_names[msg.client_action], action_names[msg.server_action], output_result);
@@ -240,7 +258,10 @@ int main(int argc, char *argv[])
                 ssize_t count = recv(csock, &playagain_msg, sizeof(playagain_msg), 0);
                 if (count <= 0)
                 {
+                    printf("Conexão perdida com o cliente.\n");
                     close(csock);
+                    play_again = false; // ⬅️ Força a saída do loop externo
+                    break;              // ⬅️ Sai do loop interno
                 }
 
                 if (playagain_msg.type != MSG_PLAY_AGAIN_RESPONSE)
@@ -251,38 +272,30 @@ int main(int argc, char *argv[])
                 }
 
                 // Verifica se a jogada do cliente é uma opção válida
-                char *endptr;
-                long client_choice = strtol(playagain_msg.message, &endptr, 10);
+                int choice;
+                int validation = validate_integer(playagain_msg.message, 0, 1, &choice);
 
-                if (endptr == playagain_msg.message || *endptr != '\0')
+                if (validation != 0)
                 {
-                    printf("Cliente nao escolheu um inteiro.\n");
-                    printf("Erro: opção inválida de jogada.\n");
                     GameMessage error_msg;
                     memset(&error_msg, 0, sizeof(error_msg));
                     error_msg.type = MSG_ERROR;
-                    snprintf(error_msg.message, MSG_SIZE, "Por favor, digite 1 para jogar novamente ou 0 para encerrar.\n");
+
+                    if (validation == -1)
+                    {
+                        printf("Cliente não escolheu um inteiro.\n");
+                    }
+                    else
+                    {
+                        printf("Erro: resposta inválida para jogar novamente.\n");
+                    }
+
+                    snprintf(error_msg.message, MSG_SIZE, "\nPor favor, digite 1 para jogar novamente ou 0 para encerrar.\n");
                     send(csock, &error_msg, sizeof(error_msg), 0);
                     continue;
                 }
-                else
-                {
-                    playagain_msg.client_action = (int)client_choice;
-                    printf("Cliente escolheu %d.\n", playagain_msg.client_action);
 
-                    if (client_choice < 0 || client_choice > 4)
-                    {
-                        GameMessage error_msg;
-                        memset(&error_msg, 0, sizeof(error_msg));
-                        error_msg.type = MSG_ERROR;
-                        printf("Erro: resposta inválida para jogar novamente.\n");
-                        snprintf(error_msg.message, MSG_SIZE, "Por favor, digite 1 para jogar novamente ou 0 para encerrar.\n");
-                        send(csock, &error_msg, sizeof(error_msg), 0);
-                        continue;
-                    }
-
-                   
-                }
+                playagain_msg.client_action = choice;
 
                 if (playagain_msg.client_action == 0)
                 {
@@ -296,9 +309,6 @@ int main(int argc, char *argv[])
                     printf("Cliente deseja jogar novamente.\n");
                     break;
                 }
-
-                
-
             }
         }
 
