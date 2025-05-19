@@ -8,81 +8,81 @@
 #include <arpa/inet.h>
 #include "common.h"
 
-#define BUFSZ 1024 // CP
+#define BUFSZ 1024 
 
-// Função para exibir instruções de uso
+// Exibe instruções de uso
 void usage(char **argv)
-{                                                     // CP
-    printf("Uso: %s <IP> <porta>\n", argv[0]);        // CP
-    printf("exemplo: %s 127.0.0.1 51511\n", argv[0]); // CP
-    exit(EXIT_FAILURE);                               // CP
+{                                                     
+    printf("Uso: %s <IP> <porta>\n", argv[0]);        
+    printf("exemplo: %s 127.0.0.1 51511\n", argv[0]); 
+    exit(EXIT_FAILURE);                               
 }
 
 int main(int argc, char *argv[])
-{  // Verifica se foram fornecidos exatamente 3 argumentos (nome do programa, IP, porta)
-    if (argc != 3)
-    {                // CP
-        usage(argv); // CP
+{ 
+    if (argc != 3)// Verifica se foram fornecidos exatamente 3 argumentos (nome do programa, IP, porta)
+    {                
+        usage(argv); 
     }
 
-     // Configura a estrutura de endereço do servidor com base no IP e porta fornecidos
-    struct sockaddr_storage storage; // CP
+    // Configura a estrutura de endereço do servidor com base no IP e porta fornecidos
+    struct sockaddr_storage storage; 
     if (0 != addrparse(argv[1], argv[2], &storage))
-    {                // CP
-        usage(argv); // CP
+    {                
+        usage(argv); 
     }
 
     // Cria um socket TCP
-    int s;                                         // CP
-    s = socket(storage.ss_family, SOCK_STREAM, 0); // CP
+    int s;                                         
+    s = socket(storage.ss_family, SOCK_STREAM, 0); 
     if (s == -1)
-    {                      // CP
-        logexit("socket"); // CP
+    {                      
+        logexit("socket"); 
     }
 
     // Conecta ao servidor
-    struct sockaddr *addr = (struct sockaddr *)(&storage); // CP
+    struct sockaddr *addr = (struct sockaddr *)(&storage); 
     if (0 != connect(s, addr, sizeof(storage)))
-    {                       // CP
-        logexit("connect"); // CP
-    }
+    {                       
+        logexit("connect"); 
+    }    
+    printf("Conectado ao servidor.\n"); 
 
-    // Exibe o endereço ao qual o cliente se conectou
-       // CP
-    printf("Conectado ao servidor.\n"); // CP
+    bool running = true; // Flag para controle do loop principal
 
-    bool running = true;
-
-    while (running)
+    while (running) // Loop principal de comunicação com o servidor
     {
-        // Receber mensagem do servidor
+        // Recebe mensagem do servidor
         GameMessage msg;
         size_t count = recv(s, &msg, sizeof(msg), 0);
         if (count <= 0)
-        { // Servidor desconectado ou erro
+        { 
             logexit("recv");
         }
 
-        int valid_input = 0;
-        // Processa a mensagem com base no tipo
+        int valid_input = 0; // Flag para validação de entrada (impede entrada de caracteres)
+        
+        // Processamento da mensagem de acordo com seu tipo
         switch (msg.type)
         {
         case MSG_REQUEST: // Exibe a solicitação de jogada e lê a escolha do usuário
-            printf("%s", msg.message);    // CP
-            memset(&msg, 0, sizeof(msg)); // CP
+            printf("%s", msg.message);    
+            memset(&msg, 0, sizeof(msg)); 
             msg.type = MSG_RESPONSE;
-            //scanf("%d", &msg.client_action); // Recebe a ação do usuário //CP
 
+            // Verifica se a entrada é numérica
             valid_input = 0;
-            while (!valid_input) {
-                int input = scanf("%d", &msg.client_action);
-                
-                if (input == 1) {
-                    valid_input = 1; // Entrada válida
-                } else {
-                    // Limpa o buffer de entrada para remover caracteres inválidos
+            while (!valid_input)
+            {
+                if (scanf("%d", &msg.client_action) == 1)
+                {
+                    valid_input = 1; 
+                }
+                else
+                {
+                    // Limpa a entrada para remover caracteres inválidos
                     int c;
-                    while ((c = getchar()) != '\n' && c != EOF); // Descarta caracteres inválidos
+                    while ((c = getchar()) != '\n' && c != EOF); 
                     printf("Por favor, selecione um valor de 0 a 4.\n ");
                 }
             }
@@ -90,25 +90,32 @@ int main(int argc, char *argv[])
             // Manda resposta ao servidor
             if (send(s, &msg, sizeof(msg), 0) != sizeof(msg))
             {
-                logexit("send"); // CP
+                logexit("send"); 
             }
             break;
+
         case MSG_PLAY_AGAIN_REQUEST: // Exibe a solicitação de jogar novamente e lê a resposta do usuário
             printf("%s", msg.message);
             int play_again;
+
+            // Verifica se a entrada é numérica
             valid_input = 0;
-            while (!valid_input) {
-                int input = scanf("%d", &play_again);
-                
-                if (input == 1) {
+            while (!valid_input)
+            {
+                if (scanf("%d", &play_again) == 1)
+                {
                     valid_input = 1; // Entrada válida
-                } else {
+                }
+                else
+                {
                     // Limpa o buffer de entrada para remover caracteres inválidos
                     int c;
-                    while ((c = getchar()) != '\n' && c != EOF); // Descarta caracteres inválidos
+                    while ((c = getchar()) != '\n' && c != EOF); 
                     printf("Por favor, digite 1 para jogar novamente ou 0 para encerrar.\n$ ");
                 }
             }
+
+            // Manda resposta ao servidor
             GameMessage play_response;
             memset(&play_response, 0, sizeof(play_response));
             play_response.type = MSG_PLAY_AGAIN_RESPONSE;
@@ -116,23 +123,23 @@ int main(int argc, char *argv[])
             send(s, &play_response, sizeof(play_response), 0);
             break;
 
-        case MSG_RESULT:  // Exibe o resultado da rodada
-            printf("%s", msg.message);
+        case MSG_RESULT: // Exibe o resultado da rodada
+            printf("%s\n", msg.message);
             break;
         case MSG_ERROR: // Exibe mensagem de erro do servidor
-           printf("%s\n", msg.message);
+            printf("%s\n", msg.message);
             break;
         case MSG_END: // Exibe mensagem final e encerra o programa
-            printf("%s", msg.message);
-            running= false;
-             close(s);
-            exit(EXIT_SUCCESS); 
-        default:  // Tipo de mensagem inesperado
-            fprintf(stderr, "Tipo inesperado: %d", msg.type);
+            printf("%s\n", msg.message);
+            running = false;
+            close(s);
+            exit(EXIT_SUCCESS);
+        default: // Tipo de mensagem inesperado
+            fprintf(stderr, "Tipo inesperado: %d\n", msg.type);
         }
     }
 
-    // Fecha conexão
-    close(s);           // CP
-    exit(EXIT_SUCCESS); // CP
+    // Fecha a conexão
+    close(s);           
+    exit(EXIT_SUCCESS); 
 }
