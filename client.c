@@ -89,24 +89,32 @@ int main(int argc, char *argv[])
             printf("%s", msg.message);    
             memset(&msg, 0, sizeof(msg)); 
             msg.type = MSG_RESPONSE;
-            msg.client_action = get_valid_int("Por favor, selecione um valor de 0 a 4.\n ");
-            // Manda resposta ao servidor
-            if (send(s, &msg, sizeof(msg), 0) != sizeof(msg))
-            {
-                logexit("send"); 
+           fgets(msg.message, MSG_SIZE, stdin);
+            size_t len = strlen(msg.message);
+            if (len > 0 && msg.message[len - 1] == '\n') {
+                msg.message[len - 1] = '\0';
+            }
+            if (send(s, &msg, sizeof(msg), 0) != sizeof(msg)) {
+                logexit("send");
             }
             break;
 
         case MSG_PLAY_AGAIN_REQUEST: // Exibe a solicitação de jogar novamente e lê a resposta do usuário
             printf("%s", msg.message);
-            int play_again = get_valid_int("Por favor, digite 1 para jogar novamente ou 0 para encerrar.\n");
-
+            
             // Manda resposta ao servidor
             GameMessage play_response;
             memset(&play_response, 0, sizeof(play_response));
             play_response.type = MSG_PLAY_AGAIN_RESPONSE;
-            play_response.client_action = play_again;
-            send(s, &play_response, sizeof(play_response), 0);
+            fgets(play_response.message, MSG_SIZE, stdin);
+            size_t len_again = strlen(play_response.message);
+            if (len_again > 0 && play_response.message[len_again - 1] == '\n') {
+                play_response.message[len_again - 1] = '\0';
+            }
+            if (send(s, &play_response, sizeof(play_response), 0) != sizeof(play_response)) {
+                logexit("send");
+            }
+            
             break;
 
         case MSG_RESULT: // Exibe o resultado da rodada

@@ -44,7 +44,7 @@ int main(int argc, char *argv[])
         logexit("socket");
     }
 
-    // Permite reuso do endereço 
+    // Permite reuso do endereço
     int enable = 1;
     if (0 != setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)))
     {
@@ -71,28 +71,26 @@ int main(int argc, char *argv[])
     printf("Servidor iniciado em modo IP%s na porta %s. Aguardando conexão..\n", argv[1], argv[2]);
 
     // Ações de jogadas disponíveis
-    static const char *action_names[5] = 
-    {
-        "Nuclear Attack", "Intercept Attack", "Cyber Attack", "Drone Strike", "Bio Attack"
-    };
+    static const char *action_names[5] =
+        {
+            "Nuclear Attack", "Intercept Attack", "Cyber Attack", "Drone Strike", "Bio Attack"};
 
     // Resultados da partida possíveis (matriz: cliente x servidor)
     // 1 = cliente vence, 0 = servidor vence, -1 = empate
-    static const int verify_winner[5][5] = 
-    {
-        {-1, 0, 1, 1, 0},
-        {1, -1, 0, 0, 1},
-        {0, 1, -1, 1, 0},
-        {0, 1, 0, -1, 1},
-        {1, 0, 1, 0, -1}
-    };
+    static const int verify_winner[5][5] =
+        {
+            {-1, 0, 1, 1, 0},
+            {1, -1, 0, 0, 1},
+            {0, 1, -1, 1, 0},
+            {0, 1, 0, -1, 1},
+            {1, 0, 1, 0, -1}};
 
     while (1) // Loop principal do servidor
     {
         struct sockaddr_storage cstorage;
         struct sockaddr *caddr = (struct sockaddr *)(&cstorage);
         socklen_t caddrlen = sizeof(cstorage);
-    
+
         // Aceita conexão do cliente
         int csock = accept(s, caddr, &caddrlen);
         if (csock == -1)
@@ -144,17 +142,38 @@ int main(int argc, char *argv[])
                     continue;
                 }
 
-                printf("Cliente escolheu %d.\n", msg.client_action);
-
                 // Verifica se a jogada do cliente é uma opção válida
-                if (msg.client_action < 0 || msg.client_action > 4)
+                char *endptr;
+                long client_action = strtol(msg.message, &endptr, 10);
+
+                if (endptr == msg.message || *endptr != '\0')
                 {
-                    memset(&msg, 0, sizeof(msg));
-                    msg.type = MSG_ERROR;
+                    printf("Cliente nao escolheu um inteiro.\n");
                     printf("Erro: opção inválida de jogada.\n");
-                    snprintf(msg.message, MSG_SIZE, "\nPor favor, selecione um valor de 0 a 4.\n");
-                    send(csock, &msg, sizeof(msg), 0);
+                    GameMessage error_msg;
+                    memset(&error_msg, 0, sizeof(error_msg));
+                    error_msg.type = MSG_ERROR;
+                    snprintf(error_msg.message, MSG_SIZE, "Por favor, selecione um valor de 0 a 4.\n");
+                    send(csock, &error_msg, sizeof(error_msg), 0);
                     continue;
+                }
+                else
+                {
+                    msg.client_action = (int)client_action;
+                    printf("Cliente escolheu %d.\n", msg.client_action);
+
+                    if (client_action < 0 || client_action > 4)
+                    {
+                        GameMessage error_msg;
+                        memset(&error_msg, 0, sizeof(error_msg));
+                        error_msg.type = MSG_ERROR;
+                        printf("Erro: opção inválida de jogada.\n");
+                        snprintf(error_msg.message, MSG_SIZE, "Por favor, selecione um valor de 0 a 4.\n");
+                        send(csock, &error_msg, sizeof(error_msg), 0);
+                        continue;
+                    }
+
+                   
                 }
 
                 // Gera jogada aleatória do servidor
@@ -231,6 +250,40 @@ int main(int argc, char *argv[])
                     continue;
                 }
 
+                // Verifica se a jogada do cliente é uma opção válida
+                char *endptr;
+                long client_choice = strtol(playagain_msg.message, &endptr, 10);
+
+                if (endptr == playagain_msg.message || *endptr != '\0')
+                {
+                    printf("Cliente nao escolheu um inteiro.\n");
+                    printf("Erro: opção inválida de jogada.\n");
+                    GameMessage error_msg;
+                    memset(&error_msg, 0, sizeof(error_msg));
+                    error_msg.type = MSG_ERROR;
+                    snprintf(error_msg.message, MSG_SIZE, "Por favor, digite 1 para jogar novamente ou 0 para encerrar.\n");
+                    send(csock, &error_msg, sizeof(error_msg), 0);
+                    continue;
+                }
+                else
+                {
+                    playagain_msg.client_action = (int)client_choice;
+                    printf("Cliente escolheu %d.\n", playagain_msg.client_action);
+
+                    if (client_choice < 0 || client_choice > 4)
+                    {
+                        GameMessage error_msg;
+                        memset(&error_msg, 0, sizeof(error_msg));
+                        error_msg.type = MSG_ERROR;
+                        printf("Erro: resposta inválida para jogar novamente.\n");
+                        snprintf(error_msg.message, MSG_SIZE, "Por favor, digite 1 para jogar novamente ou 0 para encerrar.\n");
+                        send(csock, &error_msg, sizeof(error_msg), 0);
+                        continue;
+                    }
+
+                   
+                }
+
                 if (playagain_msg.client_action == 0)
                 {
                     printf("Cliente não deseja jogar novamente.\n");
@@ -244,14 +297,8 @@ int main(int argc, char *argv[])
                     break;
                 }
 
-                else
-                {
-                    memset(&playagain_msg, 0, sizeof(playagain_msg));
-                    playagain_msg.type = MSG_ERROR;
-                    printf("Erro: resposta inválida para jogar novamente.\n");
-                    snprintf(playagain_msg.message, MSG_SIZE, "Por favor, digite 1 para jogar novamente ou 0 para encerrar.\n");
-                    send(csock, &playagain_msg, sizeof(playagain_msg), 0);
-                }
+                
+
             }
         }
 
