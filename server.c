@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
     printf("Servidor iniciado em modo IP%s na porta %s. Aguardando conexão..\n", argv[1], argv[2]);
 
     // Ações de jogadas disponíveis
-    const char *action_names[5] = 
+    static const char *action_names[5] = 
     {
         "Nuclear Attack", "Intercept Attack", "Cyber Attack", "Drone Strike", "Bio Attack"
     };
@@ -277,5 +277,5 @@ int main(int argc, char *argv[])
         exit(EXIT_SUCCESS);
     }
 
-    exit(EXIT_SUCCESS);
+    return 0;
 }

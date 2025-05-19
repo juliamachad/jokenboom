@@ -18,6 +18,26 @@ void usage(char **argv)
     exit(EXIT_FAILURE);                               
 }
 
+// Função para ler entrada numérica (ignorar caracteres)
+int get_valid_int(const char *mensagemErro)
+{
+    int valor, c;
+    while (true)
+    {
+        if (scanf("%d", &valor) == 1)
+        {
+            break;
+        }
+        else
+        {
+            // Limpa o buffer de entrada
+            while ((c = getchar()) != '\n' && c != EOF);
+            printf("%s", mensagemErro);
+        }
+    }
+    return valor;
+}
+
 int main(int argc, char *argv[])
 { 
     if (argc != 3)// Verifica se foram fornecidos exatamente 3 argumentos (nome do programa, IP, porta)
@@ -69,24 +89,7 @@ int main(int argc, char *argv[])
             printf("%s", msg.message);    
             memset(&msg, 0, sizeof(msg)); 
             msg.type = MSG_RESPONSE;
-
-            // Verifica se a entrada é numérica
-            valid_input = 0;
-            while (!valid_input)
-            {
-                if (scanf("%d", &msg.client_action) == 1)
-                {
-                    valid_input = 1; 
-                }
-                else
-                {
-                    // Limpa a entrada para remover caracteres inválidos
-                    int c;
-                    while ((c = getchar()) != '\n' && c != EOF); 
-                    printf("Por favor, selecione um valor de 0 a 4.\n ");
-                }
-            }
-
+            msg.client_action = get_valid_int("Por favor, selecione um valor de 0 a 4.\n ");
             // Manda resposta ao servidor
             if (send(s, &msg, sizeof(msg), 0) != sizeof(msg))
             {
@@ -96,24 +99,7 @@ int main(int argc, char *argv[])
 
         case MSG_PLAY_AGAIN_REQUEST: // Exibe a solicitação de jogar novamente e lê a resposta do usuário
             printf("%s", msg.message);
-            int play_again;
-
-            // Verifica se a entrada é numérica
-            valid_input = 0;
-            while (!valid_input)
-            {
-                if (scanf("%d", &play_again) == 1)
-                {
-                    valid_input = 1; // Entrada válida
-                }
-                else
-                {
-                    // Limpa o buffer de entrada para remover caracteres inválidos
-                    int c;
-                    while ((c = getchar()) != '\n' && c != EOF); 
-                    printf("Por favor, digite 1 para jogar novamente ou 0 para encerrar.\n$ ");
-                }
-            }
+            int play_again = get_valid_int("Por favor, digite 1 para jogar novamente ou 0 para encerrar.\n");
 
             // Manda resposta ao servidor
             GameMessage play_response;
