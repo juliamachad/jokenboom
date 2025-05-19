@@ -125,24 +125,12 @@ int main(int argc, char *argv[])
         case MSG_END: // Exibe mensagem final e encerra o programa
             printf("%s", msg.message);
             running= false;
+             close(s);
+            exit(EXIT_SUCCESS); 
         default:  // Tipo de mensagem inesperado
             fprintf(stderr, "Tipo inesperado: %d", msg.type);
         }
     }
-
-    // if (msg.type != MSG_REQUEST) { // Tipo de mensagem inesperado
-    //     fprintf(stderr, "esperava MSG_REQUEST, recebeu tipo=%d\n", msg.type);
-    //     exit(EXIT_FAILURE);
-    // }
-
-    // Exibe a solicitação do servidor e obtém a escolha do usuário
-
-    // Recebe o resultado do servidor
-    // memset(&msg, 0, sizeof(msg));//CP
-    // count = recv(s, &msg, sizeof(msg), 0);//CP
-    // if (count <= 0) {
-    //     logexit("recv");
-    // }
 
     // Fecha conexão
     close(s);           // CP

@@ -13,91 +13,84 @@
 
 // Exibe instruções de uso e encerra o programa
 void usage(char **argv)
-{                                                 // CP
-    printf("Uso: %s <v4|v6> <porta>\n", argv[0]); // CP
-    printf("exemplo: %s v4 51511\n", argv[0]);    // CP
-    exit(EXIT_FAILURE);                           // CP
-}
-
-// Determina o vencedor com base nas ações do cliente e servidor
-GameMessage verify_winner(GameMessage msg)
-{
-    static const int result[5][5] = {
-        // 1 = cliente vence, 0 = servidor vence, -1 = empate
-        {-1, 0, 1, 1, 0}, // Nuclear
-        {1, -1, 0, 0, 1}, // Intercept
-        {0, 1, -1, 1, 0}, // Cyber
-        {0, 1, 0, -1, 1}, // Drone
-        {1, 0, 1, 0, -1}  // Bio
-    };
-    msg.result = result[msg.client_action][msg.server_action];
-    return msg;
+{                                                 
+    printf("Uso: %s <v4|v6> <porta>\n", argv[0]); 
+    printf("exemplo: %s v4 51511\n", argv[0]);    
+    exit(EXIT_FAILURE);                           
 }
 
 int main(int argc, char *argv[])
-{ // CP
+{ 
     if (argc != 3)
-    {                // CP
-        usage(argv); // CP
+    {                
+        usage(argv); 
     }
 
     // Inicializa gerador de números aleatórios
     srand(time(NULL));
 
-    struct sockaddr_storage storage; // CP
+    struct sockaddr_storage storage; 
     if (0 != server_sockaddr_init(argv[1], argv[2], &storage))
-    {                // CP
-        usage(argv); // CP
+    {                
+        usage(argv); 
     }
 
-    int s;                                         // CP
-    s = socket(storage.ss_family, SOCK_STREAM, 0); // CP
+    int s;                                         
+    s = socket(storage.ss_family, SOCK_STREAM, 0); 
     if (s == -1)
-    {                      // CP
-        logexit("socket"); // CP
+    {                      
+        logexit("socket"); 
     }
 
-    int enable = 1; // CP
+    int enable = 1; 
     if (0 != setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)))
-    {                          // CP
-        logexit("setsockopt"); // CP
+    {                          
+        logexit("setsockopt"); 
     }
 
-    struct sockaddr *addr = (struct sockaddr *)(&storage); // CP
+    struct sockaddr *addr = (struct sockaddr *)(&storage); 
     if (0 != bind(s, addr, sizeof(storage)))
-    {                    // CP
-        logexit("bind"); // CP
+    {                    
+        logexit("bind"); 
     }
 
     if (0 != listen(s, 10))
-    {                      // CP
-        logexit("listen"); // CP
+    {                      
+        logexit("listen"); 
     }
 
-    char addrstr[BUFSZ];                                   // CP
-    addrtostr(addr, addrstr, BUFSZ);                       // CP
-    printf("Servidor iniciado em modo %s na porta %s. Aguardando conexão..\n", addrstr); // CP
+    char addrstr[BUFSZ];                                   
+    addrtostr(addr, addrstr, BUFSZ);                       
+    printf("Servidor iniciado em modo IP%s na porta %s. Aguardando conexão..\n", argv[1], argv[2]);
 
      // Nomes das ações para mensagens
         const char *action_names[5] = {
             "Nuclear Attack", "Intercept Attack", "Cyber Attack", "Drone Strike", "Bio Attack"};
 
+        static const int verify_winner[5][5] = {
+        // 1 = cliente vence, 0 = servidor vence, -1 = empate
+        {-1, 0, 1, 1, 0}, 
+        {1, -1, 0, 0, 1}, 
+        {0, 1, -1, 1, 0}, 
+        {0, 1, 0, -1, 1}, 
+        {1, 0, 1, 0, -1}  
+    };
 
     while (1)
-    {                                                            // CP
-        struct sockaddr_storage cstorage;                        // CP
-        struct sockaddr *caddr = (struct sockaddr *)(&cstorage); // CP
-        socklen_t caddrlen = sizeof(cstorage);                   // CP
+    {                                                            
+        struct sockaddr_storage cstorage;                        
+        struct sockaddr *caddr = (struct sockaddr *)(&cstorage); 
+        socklen_t caddrlen = sizeof(cstorage);                   
 
-        int csock = accept(s, caddr, &caddrlen); // CP
+        int csock = accept(s, caddr, &caddrlen); 
         if (csock == -1)
-        {                      // CP
-            logexit("accept"); // CP
+        {                      
+            logexit("accept"); 
         }
 
-        char caddrstr[BUFSZ];                           // CP
-        addrtostr(caddr, caddrstr, BUFSZ);              // CP
-        printf("Cliente conectado.\n", caddrstr); // CP
+        char caddrstr[BUFSZ];                           
+        addrtostr(caddr, caddrstr, BUFSZ);              
+        printf("Cliente conectado.\n", caddrstr); 
 
         int client_wins = 0;
         int server_wins = 0;
@@ -112,15 +105,15 @@ int main(int argc, char *argv[])
             {
                 // Preparar mensagem para solicitar ação do cliente
                 GameMessage msg;
-                memset(&msg, 0, sizeof(msg)); // CP
+                memset(&msg, 0, sizeof(msg)); 
                 printf("Apresentando as opções para o cliente.\n");
                 snprintf(msg.message, MSG_SIZE,
-                         "Escolha sua jogada:\n"
+                         "Escolha sua jogada:\n\n"
                          "0 - Nuclear Attack\n"
                          "1 - Intercept Attack\n"
                          "2 - Cyber Attack\n"
                          "3 - Drone Strike\n"
-                         "4 - Bio Attack\n");
+                         "4 - Bio Attack\n\n");
                 if (send(csock, &msg, sizeof(msg), 0) != sizeof(msg))
                 {
                     logexit("send");
@@ -134,25 +127,25 @@ int main(int argc, char *argv[])
                 }
                 if (msg.type != MSG_RESPONSE)
                 {
-                    fprintf(stderr, "esperava MSG_RESPONSE, recebeu tipo=%d\n", msg.type);
-                    
+                    printf("Erro: opção inválida de jogada.\n");
                     continue;
                 }
+                printf("Cliente escolheu %d.\n", msg.client_action);
                 if (msg.client_action < 0 || msg.client_action > 4)
                 {
                     memset(&msg, 0, sizeof(msg));
                     msg.type = MSG_ERROR;
                     printf("Erro: opção inválida de jogada.\n");
-                    snprintf(msg.message, MSG_SIZE, "Por favor, selecione um valor de 0 a 4.\n");
+                    snprintf(msg.message, MSG_SIZE, "\nPor favor, selecione um valor de 0 a 4.\n");
                     send(csock, &msg, sizeof(msg), 0);
                     continue;
                 }
 
-                printf("Cliente escolheu %d.\n", msg.client_action);
+                
                 // Gera ação do servidor e determina resultado
                 msg.server_action = rand() % 5;
                 printf("Servidor escolheu aleatoriamente %d.\n", msg.server_action);
-                msg = verify_winner(msg);
+                msg.result = verify_winner[msg.client_action][msg.server_action];
                 result=msg.result;
                 const char *output_result;
                 if (result == 1)
@@ -168,7 +161,7 @@ int main(int argc, char *argv[])
                 else if (result == -1)
                 {
                     output_result = "Empate!";
-                    printf("Jogo empatado.\nSolicitando ao cliente mais uma escolha.");
+                    printf("Jogo empatado.\nSolicitando ao cliente mais uma escolha.\n");
                 }
 
                 GameMessage result_msg;
@@ -178,7 +171,7 @@ int main(int argc, char *argv[])
                 result_msg.server_action = msg.server_action;
                 result_msg.result = result;
                 snprintf(result_msg.message, MSG_SIZE,
-                         "Você escolheu: %s\nServidor escolheu: %s\nResultado: %s\n",
+                         "\nVocê escolheu: %s\nServidor escolheu: %s\nResultado: %s\n",
                          action_names[msg.client_action], action_names[msg.server_action], output_result);
                 if (send(csock, &result_msg, sizeof(result_msg), 0) != sizeof(result_msg)) {
                     close(csock);
@@ -192,7 +185,7 @@ int main(int argc, char *argv[])
             GameMessage playagain_msg;
             memset(&playagain_msg, 0, sizeof(playagain_msg));
             playagain_msg.type = MSG_PLAY_AGAIN_REQUEST;
-            snprintf(playagain_msg.message, MSG_SIZE, "Deseja jogar novamente?\n1 - Sim\n0 - Não\n");
+            snprintf(playagain_msg.message, MSG_SIZE, "Deseja jogar novamente?\n1 - Sim\n0 - Não\n\n");
             printf("Perguntando se o cliente deseja jogar novamente.\n");
             if (send(csock, &playagain_msg, sizeof(playagain_msg), 0) != sizeof(playagain_msg)) {
                      close(csock);
@@ -224,7 +217,7 @@ int main(int argc, char *argv[])
                 memset(&playagain_msg, 0, sizeof(playagain_msg));
                 playagain_msg.type = MSG_ERROR;
                 printf("Erro: resposta inválida para jogar novamente.\n");
-                snprintf(playagain_msg.message, MSG_SIZE, "Por favor, digite 1 para jogar novamente ou 0 para encerrar.");
+                snprintf(playagain_msg.message, MSG_SIZE, "Por favor, digite 1 para jogar novamente ou 0 para encerrar.\n");
                 send(csock, &playagain_msg, sizeof(playagain_msg), 0);
             }
         }
@@ -237,7 +230,7 @@ int main(int argc, char *argv[])
         end_msg.client_wins = client_wins;
         end_msg.server_wins = server_wins;
         snprintf(end_msg.message, MSG_SIZE,
-                 "Fim de jogo!\nPlacar final: Você %d x %d Servidor\nObrigado por jogar!\n",
+                 "\nFim de jogo!\nPlacar final: Você %d x %d Servidor\nObrigado por jogar!\n",
                  client_wins, server_wins);
         printf("Enviando placar final.\n");
         if (send(csock, &end_msg, sizeof(end_msg), 0) != sizeof(end_msg)) {
