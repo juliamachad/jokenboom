@@ -19,8 +19,8 @@ void usage(char **argv)
     exit(EXIT_FAILURE);
 }
 
-// Função para validar se a entrada é um inteiro dentro de um intervalo
-// Retorna 0 se entrada válida, -1 se não é inteiro, -2 se está fora do intervalo esperado
+// Função para validar se a entrada é um inteiro e está dentro de um intervalo
+// Retorna 0 se entrada válida, -1 se não é inteiro, -2 se inteiro mas fora do intervalo esperado
 int validate_integer(const char *input, int min, int max, int *output)
 {
     char *endptr;
@@ -30,15 +30,16 @@ int validate_integer(const char *input, int min, int max, int *output)
     {
         return -1;
     }
-
-    if (value < min || value > max)
+    else if (value < min || value > max)
     {
         *output = (int)value;
         return -2;
     }
-
-    *output = (int)value;
-    return 0;
+    else
+    {
+        *output = (int)value;
+        return 0;
+    }
 }
 
 int main(int argc, char *argv[])
@@ -201,7 +202,7 @@ int main(int argc, char *argv[])
 
                 // Verifica o resultado da partida na matriz
                 msg.result = verify_winner[msg.client_action][msg.server_action];
-                result= msg.result; 
+                result = msg.result;
                 const char *output_result;
                 if (msg.result == 1)
                 {
@@ -260,8 +261,8 @@ int main(int argc, char *argv[])
                 {
                     printf("Conexão perdida com o cliente.\n");
                     close(csock);
-                    play_again = false; // ⬅️ Força a saída do loop externo
-                    break;              // ⬅️ Sai do loop interno
+                    play_again = false; // Força a saída do loop externo
+                    break;           
                 }
 
                 if (playagain_msg.type != MSG_PLAY_AGAIN_RESPONSE)
@@ -331,7 +332,6 @@ int main(int argc, char *argv[])
         printf("Encerrando conexão.\n");
         close(csock);
         printf("Cliente desconectado.\n");
-        exit(EXIT_SUCCESS);
     }
 
     return 0;

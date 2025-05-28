@@ -1,5 +1,4 @@
 # Makefile para Jokenboom (server/client)
-
 CC := gcc
 CFLAGS := -std=c11 -Wall -Wextra
 BUILDDIR := bin
